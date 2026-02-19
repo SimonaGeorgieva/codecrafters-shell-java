@@ -2,6 +2,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Scanner;
@@ -13,7 +14,8 @@ public class Main {
     private static final String EXIT = "exit";
     private static final String ECHO = "echo";
     private static final String TYPE = "type";
-    private static final Set<String> builtins = new HashSet<>(List.of(EXIT, ECHO, TYPE));
+    public static final String PWD = "pwd";
+    private static final Set<String> builtins = new HashSet<>(List.of(EXIT, ECHO, TYPE, PWD));
     private static final String SEPARATOR = " ";
     private static final String PATH = "PATH";
 
@@ -34,7 +36,7 @@ public class Main {
             command = commandLine.split(SEPARATOR)[0];
             operand = commandLine.substring(command.length()).trim();
 
-            if (findExecutable(command) != null) {
+            if (findExecutable(command) != null && !builtins.contains(command)) {
                 ProcessBuilder processBuilder = new ProcessBuilder(commandLine.split(SEPARATOR));
                 processBuilder.inheritIO();
                 Process process = processBuilder.start();
@@ -45,6 +47,7 @@ public class Main {
             switch (command) {
                 case ECHO -> System.out.println(operand);
                 case TYPE -> handleType(operand);
+                case PWD -> handlePwd();
                 case EXIT -> System.exit(0);
                 default -> System.out.printf("%s: command not found%n", commandLine);
             }
@@ -62,6 +65,11 @@ public class Main {
         } else {
             System.out.printf("%s: not found%n", operand);
         }
+    }
+
+    private static void handlePwd() {
+        Path currentRelativePath = Paths.get("");
+        System.out.printf("%s%n", currentRelativePath.toAbsolutePath());
     }
 
     private static Path findExecutable(String command) {
