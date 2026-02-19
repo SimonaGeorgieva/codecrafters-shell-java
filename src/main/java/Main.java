@@ -1,4 +1,5 @@
 import java.io.File;
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashSet;
@@ -16,7 +17,7 @@ public class Main {
     private static final String SEPARATOR = " ";
     private static final String PATH = "PATH";
 
-    static void main(String[] args) {
+    static void main(String[] args) throws IOException, InterruptedException {
         Scanner scanner = new Scanner(System.in);
         String commandLine;
         String command;
@@ -33,6 +34,14 @@ public class Main {
             command = commandLine.split(SEPARATOR)[0];
             operand = commandLine.substring(command.length()).trim();
 
+            if (findExecutable(command) != null) {
+                ProcessBuilder processBuilder = new ProcessBuilder(commandLine.split(SEPARATOR));
+                processBuilder.inheritIO();
+                Process process = processBuilder.start();
+                process.waitFor();
+                continue;
+            }
+
             switch (command) {
                 case ECHO -> System.out.println(operand);
                 case TYPE -> handleType(operand);
@@ -43,23 +52,30 @@ public class Main {
     }
 
     private static void handleType(String operand) {
-        String pathEnv = System.getenv(PATH);
-        String[] directories = pathEnv.split(File.pathSeparator);
-
         if (builtins.contains(operand)) {
             System.out.printf("%s is a shell builtin%n", operand);
             return;
         }
+        Path filePath = findExecutable(operand);
+        if (filePath != null) {
+            System.out.printf("%s is %s%n", operand, filePath);
+        } else {
+            System.out.printf("%s: not found%n", operand);
+        }
+    }
 
+    private static Path findExecutable(String command) {
+        String pathEnv = System.getenv(PATH);
+        if (pathEnv == null) {
+            return null;
+        }
         Path filePath;
-        for (String directory : directories) {
-            filePath = Path.of(directory, operand);
-
+        for (String directory : pathEnv.split(File.pathSeparator)) {
+            filePath = Path.of(directory, command);
             if (Files.exists(filePath) && Files.isExecutable(filePath)) {
-                System.out.printf("%s is %s%n", operand, filePath);
-                return;
+                return filePath;
             }
         }
-        System.out.printf("%s: not found%n", operand);
+        return null;
     }
 }
